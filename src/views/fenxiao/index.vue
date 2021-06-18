@@ -650,9 +650,8 @@ export default {
         width: 10px;
         height: 10px;
     }
-     .fenxiao .van-swipe__indicator.van-swipe__indicator--active{
+    .fenxiao .van-swipe__indicator.van-swipe__indicator--active{
         background-color: #FF7E00 !important;
-        width: 20px;
     }
     .fenxiao .van-tabs .van-tabs__wrap{
         height: 100px;
