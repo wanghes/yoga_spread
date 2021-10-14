@@ -105,7 +105,6 @@
             </div>
         </div>
 
-
         <div class="box box_04">
             <div class="title"></div>
             <van-swipe class="my-swipe" :autoplay="3000" indicator-color="#FF7E00">
@@ -220,8 +219,6 @@
         <div class="depart">支付即代表您同意入下协议《小鱼管家会员协议服务》</div>
         <div class="big_btn" @click="submit">立即开通</div>
 
-
-
         <van-dialog v-model="show" width="90%" :show-confirm-button="false">
             <div class="tanchu_01">
                 <div class="block">
@@ -253,7 +250,7 @@
                                 </div>
                             </div>
                         </van-swipe-item>
-                        
+
                         <van-swipe-item>
                             <div class="titles">
                                 <div class="title_item">
@@ -389,8 +386,8 @@
                             </div>
                         </van-swipe-item>
                     </van-swipe>
-                   
-                    <div class="btn_k">立即开通</div>
+
+                    <div class="btn_k" @click="submit">立即开通</div>
                 </div>
             </div>
         </van-dialog>
@@ -445,7 +442,6 @@
             </div>
         </van-dialog>
 
-
         <van-dialog v-model="show_04" width="90%" :show-confirm-button="false">
             <div class="inner_box">
                 <img class="close" :src="close2" @click="show_04=false" alt="">
@@ -471,7 +467,7 @@
                 <div class="con">
                     1.获得瑜老师约课官方品牌专区推荐<br>
                     2.获得海量流量曝光<br>
-                    3.教练	IP曝光塑造<br>
+                    3.教练 IP曝光塑造<br>
                     4.近千家场馆品牌传播
                 </div>
             </div>
@@ -494,6 +490,10 @@
                     10.全民投票成功抢先体验
                 </div>
             </div>
+        </van-dialog>
+
+        <van-dialog v-model="showPhone" :before-close="onBeforeClose" :close-on-click-overlay="false" :overlay="true" title="填写您的购买手机号" show-cancel-button>
+            <van-field v-model="phone" name="手机号" label="手机号" placeholder="手机号" />
         </van-dialog>
     </div>
 </template>
@@ -530,73 +530,166 @@ const b_06 = require("@/assets/img/b_06.png");
 const close = require("@/assets/img/close.png");
 const close2 = require("@/assets/img/close_02.png");
 const weixinApi = require("@/api/weixin");
+const userApi = require("@/api/user");
 const wx = require("@/assets/js/jweixin-1.6.0.js");
+import { cookie, getQueryParams } from "@/utils/index";
 
 export default {
-    data() {
-        return {
-            head_01,
-            head_02,
-            head_03,
-            head_04,
-            xiao_01,
-            xiao_02,
-            xiao_03,
-            xiao_04,
-            xiao_05,
-            xiao_06,
-            k_01,
-            k_02,
-            k_03,
-            box_04_head,
-            bg,
-            yin,
-            t_01,
-            t_02,
-            t_03,
-            t_04,
-            t_05,
-            t_06,
-            b_01,
-            b_02,
-            b_03,
-            b_04,
-            b_05,
-            b_06,
-            close,
-            close2,
-            active: "a",
-            show: false,
-            show_01: false,
-            show_02: false,
-            show_03: false,
-            show_04: false,
-            show_05: false,
-            show_06: false,
-            moneys:[
-                {
-                    name: "开馆必备",
-                    price: 365,
-                    active: "限时促销",
-                    old: 699
-                },
-                {
-                    name: "社群套餐",
-                    price: 1888,
-                    active: "限时促销",
-                    old: 3680
-                }
-            ],
-            activeIndex: 0
-        }
-    },
-    mounted() {
-        this.executeWeixin();
-    },
-    methods: {
-        async executeWeixin() {
+	data() {
+		return {
+			head_01,
+			head_02,
+			head_03,
+			head_04,
+			xiao_01,
+			xiao_02,
+			xiao_03,
+			xiao_04,
+			xiao_05,
+			xiao_06,
+			k_01,
+			k_02,
+			k_03,
+			box_04_head,
+			bg,
+			yin,
+			t_01,
+			t_02,
+			t_03,
+			t_04,
+			t_05,
+			t_06,
+			b_01,
+			b_02,
+			b_03,
+			b_04,
+			b_05,
+			b_06,
+			close,
+			close2,
+			active: "a",
+			phone: "",
+			show: false,
+			showPhone: false,
+			show_01: false,
+			show_02: false,
+			show_03: false,
+			show_04: false,
+			show_05: false,
+			show_06: false,
+			moneys: [
+				{
+					name: "开馆必备",
+					price: 365,
+					active: "限时促销",
+					old: 699,
+				},
+				{
+					name: "社群套餐",
+					price: 1888,
+					active: "限时促销",
+					old: 3680,
+				},
+			],
+			activeIndex: 0,
+		};
+	},
+	mounted() {
+		this.executeWeixin();
+		this.fetchUser();
+	},
+	methods: {
+		async fetchUser() {
+			const QueryParams = getQueryParams(location.href);
+			const QueryCode = QueryParams.code;
+
+			const CookieOpenID = cookie.get("user_openid");
+			const phone = cookie.get("user_phone");
+			// 存在缓存的openid
+			if (CookieOpenID && phone) {
+				let res = await userApi.wxLogin({
+					openid: CookieOpenID,
+					phone,
+				});
+				let data = res.data;
+				if (res.code == 200) {
+					cookie.set("user_id", data.user_id);
+					cookie.set("user_phone", data.phone);
+					cookie.set("user_openid", data.openid);
+				} else {
+					this.resetAuth(QueryCode);
+				}
+			} else {
+				this.resetAuth(QueryCode);
+			}
+		},
+		async resetAuth(QueryCode) {
+			if (QueryCode) {
+				// code 存在 通过code进行微信认证授权，获取用户的openid
+				let res = await weixinApi.getAuth({
+					code: QueryCode,
+				});
+                
+				if (res.code == 200 && !!res.data) {
+					const OPENID = res.data.openid;
+                    const ACCESS_TOKEN = res.data.access_token;
+					let resultData = await userApi.wxLogin({
+						openid: OPENID,
+					});
+					let data = resultData.data;
+					if (resultData.code == 200 && !!data) {
+						cookie.set("user_id", data.user_id);
+						cookie.set("user_phone", data.phone);
+						cookie.set("user_openid", data.openid)
+					} else {                        
+                        // 证明用户没有注册过呢，去注册场馆主
+                        let wxUser = await weixinApi.getUser({
+                            openid: OPENID,
+                            access_token: ACCESS_TOKEN
+                        });
+
+                        if (wxUser.code == 200 && wxUser.data) {
+                            cookie.set("user_nickname",  wxUser.data.nickname);
+						    cookie.set("user_openid",  wxUser.data.openid);
+                            cookie.set("user_head",  wxUser.data.headimgurl);
+                        }
+					}
+				} else {
+					// http://localhost:8080/?code=1&type=app#/
+					if (QueryCode == 1) {
+						console.log("测试中");
+						let resultData = await userApi.wxLogin({
+							openid: "oz3jNt3hGT_qqdUWFCnxn7_gzjWA4",
+						});
+
+						let data = resultData.data;
+						if (resultData.code == 200) {
+							cookie.set("user_id", data.user_id);
+							cookie.set("user_phone", data.phone);
+							cookie.set("user_openid", data.openid);
+						} else {
+							// this.showPhone = true;
+							// 证明用户没有注册过呢，去注册场馆主
+						}
+					} else {
+						console.log("未知错误");
+					}
+				}
+			} else {
+				let res = await weixinApi.getCode({
+					callback: window.location.href,
+				});
+				if (res.code == 200 && !!res.data) {
+					window.location.href = res.data;
+				} else {
+					console.log(res);
+				}
+			}
+		},
+		async executeWeixin() {
+			let url = location.href.split("#")[0];
 			let res = await weixinApi.jssdk_config({
-				url: location.href.split("#")[0],
+				url: url,
 			});
 			if (res.code == 200) {
 				let config = res.data;
@@ -609,577 +702,704 @@ export default {
 					debug: false,
 				});
 
-                wx.ready(function () {
-					// that.showShare = false;
+				wx.ready(function () {
 					wx.updateAppMessageShareData({
-						title:"带您赚钱的约课系统", // 分享标题
+						title: "带您赚钱的约课系统", // 分享标题
 						desc: "运行稳定不卡顿，设计简洁上手快，统计精准不出错，功能全面效率高", // 分享描述
 						link: location.href, // 分享链接，该链接域名或路径必须与当前页面对应的公众号JS安全域名一致
+                        imgurl: "http://assets.yoga.com/storage/venues/93/2a1a4cc02e0c0d6c57175be57b93c4.jpg",
 						success: function (res) {
-							// console.log(res);
+							console.log(res);
 							// 设置成功
 						},
 						fail(error) {
-							// console.log(error);
+							console.log(error);
 						},
 					});
 					wx.updateTimelineShareData({
-						title:"带您赚钱的约课系统",
-						link: location.href, // 分享链接，该链接域名或路径必须与当前页面对应的公众号JS安全域名一致
-					
-						success: function () {
-							// 设置成功
+						title: "带您赚钱的约课系统",
+						link: location.href,
+						success: function (res) {
+							console.log(res);
 						},
 					});
 				});
 			}
 		},
-        changeItem(index) {
-            this.activeIndex = index
-        },
-        submit() {
-            this.$toast("功能开发中")
-        }
-    }
-}
+		changeItem(index) {
+			this.activeIndex = index;
+		},
+		onBeforeClose(action, done) {
+			if (action === "confirm") {
+				let phone = this.phone;
+                let reg_tel = /^(13[0-9]|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18[0-9]|19[0-35-9])\d{8}$/;
+				if (!phone) {
+					this.$toast("请填写您的手机号");
+					return done(false);
+				}
+
+				if (!reg_tel.test(phone)) {
+					this.$toast("请填写正确的手机号");
+					return done(false);
+				}
+                return done();
+
+			} else {
+				return done();
+			}
+		},
+	
+		submit() {
+            let admin_user_id = cookie.get("user_id");
+            let admin_phone = cookie.get("user_phone");
+            if (admin_user_id && admin_phone) {
+                this.$toast("已经购买过了");
+                return;
+            }
+
+            let phone = this.phone;
+            if (!phone) {
+				// this.$toast("需要填写手机号");
+				this.showPhone = true;
+				return;
+			}
+
+			let type = 1; // 1是特价款，2是牛逼款
+			let money = 0;
+			if (this.activeIndex == 0) {
+				type = 1;
+				money = this.moneys[0].price;
+			} else {
+				type = 2;
+				money = this.moneys[1].price;
+			}
+        
+			var ua = window.navigator.userAgent.toLowerCase();
+			if (ua.match(/MicroMessenger/i) == "micromessenger") {
+				//再判断一下是否在小程序里
+				wx.miniProgram.getEnv(res => {
+					console.info("res", res);
+					if (res.miniprogram) {
+						wx.miniProgram.navigateTo({
+							url: `/pages/wePay/wePay?money=${money}&type=${type}`,
+						});
+					} else {
+						this.payFunc(money, type, phone);
+					}
+				});
+			} else {
+				this.$toast("请在确保使用微信浏览");
+			}
+		},
+		async payFunc(money, type, phone) {
+			let openId = cookie.get("user_openid");
+            let nickname = cookie.get("user_nickname");
+            let avatar = cookie.get("user_head");
+            money = 0.01;
+			if (!openId) {
+				this.$toast("获取用户信息失败");
+				return;
+			}
+			let res = await weixinApi.pay({
+				openid: openId,
+				total_fee: Math.ceil(money * 100),
+			});
+		
+            money = 365
+			if (res.code == 200) {
+				wx.ready(async () => {
+					let data = res.data;
+					let options = data.options;
+
+					/**
+					 * extra {out_trade_no, total_fee, prepayid}
+					 * out_trade_no 商户自己的订单号
+					 * total_fee 支付金额
+					 * prepayid 微信预支付ID
+					 */
+					let extra = data.extra;
+					let sell_type_name =
+						type == 1 ? "购买场馆主-365元" : "购买场馆主-1888元";
+					
+					options.success = async () => {
+						// 支付成功后将数据插入到表中
+						let result = await weixinApi.payOk({
+							...extra,
+							name: "场馆主购买",
+							sell_type_name: sell_type_name,
+							sell_type: 5,
+							openid: openId,
+							pay_type: 2, // 支付的方式 1：现金 2：微信 3：支付宝 4：刷卡
+							amount: money,
+                            phone,
+                            nickname,
+                            avatar
+						});
+
+						if (result.code == 200) {
+							that.$notify({
+								message: result.msg,
+								color: "#ffffff",
+								background: "#00B76F",
+							});
+							setTimeout(() => {
+								// that.$router.push({
+								// 	path: "/pay/success",
+								// });
+							}, 500);
+						}
+					};
+
+					//  取消支付的操作
+					options.cancel = function () {
+						console.log("已经取消");
+					};
+					// 支付失败的处理
+					options.fail = function () {
+						console.log("支付失败");
+					};
+					// 传入参数，发起JSAPI支付
+					wx.chooseWXPay(options);
+				});
+			}
+		},
+	},
+};
 </script>
 
 <style>
-    .fenxiao .van-swipe__indicator{
-        background-color: #ccc;
-        width: 10px;
-        height: 10px;
-    }
-    .fenxiao .van-swipe__indicator.van-swipe__indicator--active{
-        background-color: #FF7E00 !important;
-    }
-    .fenxiao .van-tabs .van-tabs__wrap{
-        height: 100px;
-    }
-    .fenxiao .van-tabs .van-tabs__wrap .van-tabs__line{
-        left: 0;
-    }
-    .fenxiao .van-dialog{
-        top:50%;
-    }
-    .block .van-swipe-item{
-        padding-bottom: 20px;
-    }
-    .fenxiao .block .van-swipe__indicator.van-swipe__indicator--active{
-        background-color: #FF7E00 !important;
-        width: 10px;
-    }
+.fenxiao .van-swipe__indicator {
+	background-color: #ccc;
+	width: 10px;
+	height: 10px;
+}
+.fenxiao .van-swipe__indicator.van-swipe__indicator--active {
+	background-color: #ff7e00 !important;
+}
+.fenxiao .van-tabs .van-tabs__wrap {
+	height: 100px;
+}
+.fenxiao .van-tabs .van-tabs__wrap .van-tabs__line {
+	left: 0;
+}
+.fenxiao .van-dialog {
+	top: 50%;
+}
+.block .van-swipe-item {
+	padding-bottom: 20px;
+}
+.fenxiao .block .van-swipe__indicator.van-swipe__indicator--active {
+	background-color: #ff7e00 !important;
+	width: 10px;
+}
 </style>
 <style lang="less" scoped>
-.inner_box{
-    min-height: 50vh;
-    width:100%;
-    background-repeat: no-repeat;
-    background-size: 100% 100%;
-    background-image: url('../../assets/img/z_bg.png');
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    color:#fff;
-    padding: 30px 20px 50px;
-    box-sizing: border-box;
-    .close{
-        width:20px;
-        height: 20px;
-        position: absolute;
-        right: 5px;
-        top: 5px;
-    }
-    .title{
-        margin: 0;
-        padding: 0;
-        line-height: 60px;
-        font-size: 24px;
-        color: #fff;
-        margin-bottom: 10px;
-    }
-    .biao{
-        font-size: 18px;
-        color: #fff;
-        margin-bottom: 2px;
-    }
-    .biao2{
-        font-size: 14px;
-        color: #fff;
-        margin-bottom: 20px;
-        font-style: normal;
-    }
-    .con{
-        padding: 20px;
-        box-sizing: border-box;
-        background-color: #f5f5f5;
-        color: #591C01;
-        font-size: 14px;
-        border-radius: 15px;
-        line-height: 24px;
-    }
+.inner_box {
+	min-height: 50vh;
+	width: 100%;
+	background-repeat: no-repeat;
+	background-size: 100% 100%;
+	background-image: url("../../assets/img/z_bg.png");
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	color: #fff;
+	padding: 30px 20px 50px;
+	box-sizing: border-box;
+	.close {
+		width: 20px;
+		height: 20px;
+		position: absolute;
+		right: 5px;
+		top: 5px;
+	}
+	.title {
+		margin: 0;
+		padding: 0;
+		line-height: 60px;
+		font-size: 24px;
+		color: #fff;
+		margin-bottom: 10px;
+	}
+	.biao {
+		font-size: 18px;
+		color: #fff;
+		margin-bottom: 2px;
+	}
+	.biao2 {
+		font-size: 14px;
+		color: #fff;
+		margin-bottom: 20px;
+		font-style: normal;
+	}
+	.con {
+		padding: 20px;
+		box-sizing: border-box;
+		background-color: #f5f5f5;
+		color: #591c01;
+		font-size: 14px;
+		border-radius: 15px;
+		line-height: 24px;
+	}
 }
-.tanchu_01{
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    
-    .block{
-        background-color: #fff;
-        height: 100%;
-        width:100%;
-        padding: 25px 15px 15px;
-        box-sizing: border-box;
-        border-radius: 15px;
-        .btn_k{
-            width:100%;
-            height: 40px;
-            background-color: #FF7E00;
-            text-align: center;
-            line-height: 40px;
-            font-size: 16px;
-            color:#fff;
-            border-radius: 10px;
-            margin: 10px auto;
-        }
-    }
-    .titles{
-        display: flex;
-        .title_item{
-            width:25%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            img{
-                width:60px;
-                height: 60px;
-                margin-bottom: 5px;
-            }
-            span{
-                color:#333;
-                font-size: 15px;
-                &.active{
-                    font-weight: bold;
-                    color:#000;
-                }
-            }
-           
-        }
-    }
-    .con{
-        margin-top: 15px;
-        padding-top: 44vh;
-        background-repeat: no-repeat;
-        background-size: cover;
-        width:100%;
-        .wenzi{
-            padding: 20px;
-            span{
-                font-size: 14px;
-                color:#000;
-            }
-            .info{
-                color: #666;
-                font-size: 12px;
-            }
-        }
-    }
-    .b_con_01{
-        background-image: url('../../assets/img/b_11.png');
-    }
-    .b_con_02{
-        background-image: url('../../assets/img/b_22.png');
-    }
-    .b_con_03{
-        background-image: url('../../assets/img/b_33.png');
-    }
-    .b_con_04{
-        background-image: url('../../assets/img/b_44.png');
-    }
-    .b_con_05{
-        background-image: url('../../assets/img/b_55.png');
-    }
-    .b_con_06{
-        background-image: url('../../assets/img/b_66.png');
-    }
-    .close{
-        width:20px;
-        height: 20px;
-        position: absolute;
-        right: 5px;
-        top: 5px;
-        background-color: #fff;
-    }
+.tanchu_01 {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+
+	.block {
+		background-color: #fff;
+		height: 100%;
+		width: 100%;
+		padding: 25px 15px 15px;
+		box-sizing: border-box;
+		border-radius: 15px;
+		.btn_k {
+			width: 100%;
+			height: 40px;
+			background-color: #ff7e00;
+			text-align: center;
+			line-height: 40px;
+			font-size: 16px;
+			color: #fff;
+			border-radius: 10px;
+			margin: 10px auto;
+		}
+	}
+	.titles {
+		display: flex;
+		.title_item {
+			width: 25%;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			img {
+				width: 60px;
+				height: 60px;
+				margin-bottom: 5px;
+			}
+			span {
+				color: #333;
+				font-size: 15px;
+				&.active {
+					font-weight: bold;
+					color: #000;
+				}
+			}
+		}
+	}
+	.con {
+		margin-top: 15px;
+		padding-top: 44vh;
+		background-repeat: no-repeat;
+		background-size: cover;
+		width: 100%;
+		.wenzi {
+			padding: 20px;
+			span {
+				font-size: 14px;
+				color: #000;
+			}
+			.info {
+				color: #666;
+				font-size: 12px;
+			}
+		}
+	}
+	.b_con_01 {
+		background-image: url("../../assets/img/b_11.png");
+	}
+	.b_con_02 {
+		background-image: url("../../assets/img/b_22.png");
+	}
+	.b_con_03 {
+		background-image: url("../../assets/img/b_33.png");
+	}
+	.b_con_04 {
+		background-image: url("../../assets/img/b_44.png");
+	}
+	.b_con_05 {
+		background-image: url("../../assets/img/b_55.png");
+	}
+	.b_con_06 {
+		background-image: url("../../assets/img/b_66.png");
+	}
+	.close {
+		width: 20px;
+		height: 20px;
+		position: absolute;
+		right: 5px;
+		top: 5px;
+		background-color: #fff;
+	}
 }
-.big_btn{
-    width:80%;
-    height: 60px;
-    line-height: 60px;
-    color:#fff;
-    font-size: 20px;
-    background-color: #FF7E00;
-    border-radius: 30px;
-    margin:20px auto;
-    text-align: center;
+.big_btn {
+	width: 80%;
+	height: 60px;
+	line-height: 60px;
+	color: #fff;
+	font-size: 20px;
+	background-color: #ff7e00;
+	border-radius: 30px;
+	margin: 20px auto;
+	text-align: center;
 }
-.depart{
-    padding: 15px 0;
-    font-size: 12px;
-    color: #333;
-    text-align: center;
+.depart {
+	padding: 15px 0;
+	font-size: 12px;
+	color: #333;
+	text-align: center;
 }
-.money{
-    display: flex;
-    justify-content: space-between;
-    margin: 30px 0;
-    .item{
-        flex:1;
-        display: flex;
-        flex-direction: column;
-        border:2px solid #fff;
-        background-color: #fff;
-        box-shadow: 0 0 10px rgba(0,0,0,.15);
-        border-radius: 20px;
-        align-items: center;
-        padding:30px 0;
-        box-sizing: border-box;
-        font-size: 16px;
-        margin: 0 10px;
-        &.active{
-            border:2px solid #FF7E00;
-        }
-        .title{
-            font-size: 18px;
-        }
-        .price{
-            color: #FF7E00;
-            font-size: 24px;
-            font-weight: bold;
-            margin: 10px 0;
-            i{
-                font-style: normal;
-                font-size: 14px;
-            }
-        }
-        .active{
-            margin-bottom: 10px;
-            color: #666666;
-            font-size: 14px;
-        }
-    }
+.money {
+	display: flex;
+	justify-content: space-between;
+	margin: 30px 0;
+	.item {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		border: 2px solid #fff;
+		background-color: #fff;
+		box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+		border-radius: 20px;
+		align-items: center;
+		padding: 30px 0;
+		box-sizing: border-box;
+		font-size: 16px;
+		margin: 0 10px;
+		&.active {
+			border: 2px solid #ff7e00;
+		}
+		.title {
+			font-size: 18px;
+		}
+		.price {
+			color: #ff7e00;
+			font-size: 24px;
+			font-weight: bold;
+			margin: 10px 0;
+			i {
+				font-style: normal;
+				font-size: 14px;
+			}
+		}
+		.active {
+			margin-bottom: 10px;
+			color: #666666;
+			font-size: 14px;
+		}
+	}
 }
-.fenxiao{
-    width:100%;
-    // height: 100vh;
-    background-image: url('../../assets/img/top.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-color: #f5f5f5;
-    padding: 50vh 15px 15px;
-    box-sizing: border-box;
+.fenxiao {
+	width: 100%;
+	// height: 100vh;
+	background-image: url("../../assets/img/top.png");
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-color: #f5f5f5;
+	padding: 50vh 15px 15px;
+	box-sizing: border-box;
 }
-.box{
-    width:100%;
-    padding: 10px 15px 20px;
-    box-sizing: border-box;
-    border-radius: 10px;
-    box-shadow: 0 0px 5px rgba(0,0,0,.2);
-    background-color: #fff;
-    margin-bottom: 15px;
-    .title{
-        height: 70px;
-        width:100%;
-        background-position: center center;
-        background-size: contain;
-        background-repeat: no-repeat;
-    }
+.box {
+	width: 100%;
+	padding: 10px 15px 20px;
+	box-sizing: border-box;
+	border-radius: 10px;
+	box-shadow: 0 0px 5px rgba(0, 0, 0, 0.2);
+	background-color: #fff;
+	margin-bottom: 15px;
+	.title {
+		height: 70px;
+		width: 100%;
+		background-position: center center;
+		background-size: contain;
+		background-repeat: no-repeat;
+	}
 }
 
-.box_01{
-    .title{
-        background-image: url("../../assets/img/title_01.png");
-    }
-    .bot{
-        display: flex;
-        justify-content: center;
-        flex-direction: column;
-        align-items: center;
-        color: #c5c5c5;
-        h4{
-            color: #FF7E00;
-            font-weight: normal;
-            font-size: 18px;
-            margin: 0;
-            padding: 0;
-            margin-bottom: 2px;
-        }
-        span{
-            font-size:12px;
-        }
-    }
+.box_01 {
+	.title {
+		background-image: url("../../assets/img/title_01.png");
+	}
+	.bot {
+		display: flex;
+		justify-content: center;
+		flex-direction: column;
+		align-items: center;
+		color: #c5c5c5;
+		h4 {
+			color: #ff7e00;
+			font-weight: normal;
+			font-size: 18px;
+			margin: 0;
+			padding: 0;
+			margin-bottom: 2px;
+		}
+		span {
+			font-size: 12px;
+		}
+	}
 }
 
-.box_02{
-    .title{
-        background-image: url("../../assets/img/title_02.png");
-    }
-    .sec{
-        text-align: center;
-        line-height: 30px;
-        color: #666;
-        font-size: 14px;
-    }
-    .con{
-        display: flex;
-        align-items: center;
-        flex-direction: column;
-        color:#666;
-        padding-top: 25px;
-        .items{
-            display: flex;
-            width:100%;
-            justify-content: space-between;
-            margin-bottom: 30px;
-            .item{
-                width: 32%;
-                display: flex;
-                justify-content: flex-start;
-                align-items: center;
-                flex-direction: column;
-                img{
-                    width: 60px;
-                }
-                strong{
-                    font-size: 14px;
-                    color:#000;
-                    margin: 10px 0;
-                }
-                .info{
-                    font-size: 12px;
-                    text-align: center;
-                }
-            }
-        }
-    }
-    .btn{
-        width: 40%;
-        height: 50px;
-        line-height: 50px;
-        color:#fff;
-        background-color: #FF7E00;
-        font-size: 18px;
-        text-align: center;
-        border-radius: 25px;
-        margin-bottom: 15px;
-    }
+.box_02 {
+	.title {
+		background-image: url("../../assets/img/title_02.png");
+	}
+	.sec {
+		text-align: center;
+		line-height: 30px;
+		color: #666;
+		font-size: 14px;
+	}
+	.con {
+		display: flex;
+		align-items: center;
+		flex-direction: column;
+		color: #666;
+		padding-top: 25px;
+		.items {
+			display: flex;
+			width: 100%;
+			justify-content: space-between;
+			margin-bottom: 30px;
+			.item {
+				width: 32%;
+				display: flex;
+				justify-content: flex-start;
+				align-items: center;
+				flex-direction: column;
+				img {
+					width: 60px;
+				}
+				strong {
+					font-size: 14px;
+					color: #000;
+					margin: 10px 0;
+				}
+				.info {
+					font-size: 12px;
+					text-align: center;
+				}
+			}
+		}
+	}
+	.btn {
+		width: 40%;
+		height: 50px;
+		line-height: 50px;
+		color: #fff;
+		background-color: #ff7e00;
+		font-size: 18px;
+		text-align: center;
+		border-radius: 25px;
+		margin-bottom: 15px;
+	}
 }
 
-.box_03{
-    background-color:#FF7E00;
-    padding: 23px 15px 25px;
-    margin: 0 -15px;
-    .title{
-        height: 70px;
-        width:100%;
-        background-position: center center;
-        background-size: contain;
-        background-repeat: no-repeat;
-        background-image: url("../../assets/img/title_03.png");
-    }
-    .item{
-        margin-bottom: 15px;
-        display: flex;
-        background-color: #fff;
-        border-radius: 15px;
-        align-items: center;
-        img{
-            width:150px;
-            height: 150px;
-        }
-        .con{
-            width: 70%;
-            padding: 5px 10px 5px 15px;
-            box-sizing:border-box;
-          
-            span{
-                font-size:15px;
-                color:#000;
-                line-height: 24px;
-            }
-            .info{
-                font-size:12px;
-                color:#666666;
-            }
-        }
-    }
-    .left{
-        border-top-left-radius: 75px;
-        border-bottom-left-radius: 75px;
-    }
-    .right{
-        border-top-right-radius: 75px;
-        border-bottom-right-radius: 75px;
-    }
+.box_03 {
+	background-color: #ff7e00;
+	padding: 23px 15px 25px;
+	margin: 0 -15px;
+	.title {
+		height: 70px;
+		width: 100%;
+		background-position: center center;
+		background-size: contain;
+		background-repeat: no-repeat;
+		background-image: url("../../assets/img/title_03.png");
+	}
+	.item {
+		margin-bottom: 15px;
+		display: flex;
+		background-color: #fff;
+		border-radius: 15px;
+		align-items: center;
+		img {
+			width: 150px;
+			height: 150px;
+		}
+		.con {
+			width: 70%;
+			padding: 5px 10px 5px 15px;
+			box-sizing: border-box;
+
+			span {
+				font-size: 15px;
+				color: #000;
+				line-height: 24px;
+			}
+			.info {
+				font-size: 12px;
+				color: #666666;
+			}
+		}
+	}
+	.left {
+		border-top-left-radius: 75px;
+		border-bottom-left-radius: 75px;
+	}
+	.right {
+		border-top-right-radius: 75px;
+		border-bottom-right-radius: 75px;
+	}
 }
 
-.box_04{
-    margin-top: 15px;
-    .title{
-        background-image: url("../../assets/img/title_04.png");
-    }
+.box_04 {
+	margin-top: 15px;
+	.title {
+		background-image: url("../../assets/img/title_04.png");
+	}
 
-    .s_inner{
-        width: 100%;
-        height: 190px;
-        box-sizing: border-box;
-        padding: 15px;
-        display: flex;
-        flex-direction: column;
-        background-image: url("../../assets/img/bg.png");
-        background-repeat: no-repeat;
-        background-size: 100% 150px;
-        .top{
-            display: flex;
-            align-items: center;
-            margin-bottom: 5px;
-            img{
-                width:50px;
-                height: 50px;
-                margin-right: 15px;
-            }
-            strong{
-                font-weight: normal;
-                color:#000;
-                font-size: 14px;
-                display: block;
-            }
-            span{
-                color:#999999;
-                font-size: 12px;
-            }
-        }
+	.s_inner {
+		width: 100%;
+		height: 190px;
+		box-sizing: border-box;
+		padding: 15px;
+		display: flex;
+		flex-direction: column;
+		background-image: url("../../assets/img/bg.png");
+		background-repeat: no-repeat;
+		background-size: 100% 150px;
+		.top {
+			display: flex;
+			align-items: center;
+			margin-bottom: 5px;
+			img {
+				width: 50px;
+				height: 50px;
+				margin-right: 15px;
+			}
+			strong {
+				font-weight: normal;
+				color: #000;
+				font-size: 14px;
+				display: block;
+			}
+			span {
+				color: #999999;
+				font-size: 12px;
+			}
+		}
 
-        .bottom{
-            padding-left: 65px;
-            font-size: 14px;
-            color:#333;
-        }
-    }
-    .bot{
-        line-height: 50px;
-        margin-bottom: 10px;
-        font-size: 14px;
-        color:#666666;
-        text-align: center;
-        span{
-            color: #FF7E00;
-        }
-    }
+		.bottom {
+			padding-left: 65px;
+			font-size: 14px;
+			color: #333;
+		}
+	}
+	.bot {
+		line-height: 50px;
+		margin-bottom: 10px;
+		font-size: 14px;
+		color: #666666;
+		text-align: center;
+		span {
+			color: #ff7e00;
+		}
+	}
 }
 
-.box_05{
-    .title{
-        background-image: url("../../assets/img/title_05.png");
-    }
-    .con{
-        padding: 15px 0;
-        display: flex;
-        flex-direction: column;
-        .items{
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            .item{
-                display: flex;
-                font-size: 14px;
-                flex-direction: column;
-                padding: 20px 0;
-                box-sizing: border-box;
-                flex: 1;
-                margin: 0 5px;
-                background-color: rgba(255,126,0, .3);
-                justify-content: center;
-                align-items: center;
-                border-radius: 8px;
-                .info{
-                    margin: 12px 0;
-                    color: #333333;
-                    text-align: center;
-                }
-                img{
-                    width: 60px;
-                    height: 60px;
-                }
-                .btn{
-                    display: inline-block;
-                    padding: 3px 12px;
-                    color: #FF7E00;
-                    border: 1px solid #FF7E00;
-                    font-size: 12px;
-                    border-radius: 10px;
-                }
-            }
-        }
-    }
-    .sps{
-        font-size: 12px;
-        color: #989898;
-        text-align: center;
-    }
+.box_05 {
+	.title {
+		background-image: url("../../assets/img/title_05.png");
+	}
+	.con {
+		padding: 15px 0;
+		display: flex;
+		flex-direction: column;
+		.items {
+			display: flex;
+			justify-content: space-between;
+			margin-bottom: 10px;
+			.item {
+				display: flex;
+				font-size: 14px;
+				flex-direction: column;
+				padding: 20px 0;
+				box-sizing: border-box;
+				flex: 1;
+				margin: 0 5px;
+				background-color: rgba(255, 126, 0, 0.3);
+				justify-content: center;
+				align-items: center;
+				border-radius: 8px;
+				.info {
+					margin: 12px 0;
+					color: #333333;
+					text-align: center;
+				}
+				img {
+					width: 60px;
+					height: 60px;
+				}
+				.btn {
+					display: inline-block;
+					padding: 3px 12px;
+					color: #ff7e00;
+					border: 1px solid #ff7e00;
+					font-size: 12px;
+					border-radius: 10px;
+				}
+			}
+		}
+	}
+	.sps {
+		font-size: 12px;
+		color: #989898;
+		text-align: center;
+	}
 }
 
-.dialog{
-    display: flex;
-    flex-direction: column;
-    font-size: 14px;
-    .item{
-        margin-bottom: 15px;
-        .con{
-            width: 100%;
-            padding: 15px;
-            box-sizing: border-box;
-            background-color: rgba(255,165,134, .2);
-            color: #751E00;
-            border-radius: 10px;
-            line-height: 24px;
-        }
-    }
-    .left{
-        display: flex;
-        flex-direction: column;
-        .head{
-            display: flex;
-            justify-content: flex-start;
-            align-items: center;
-            font-size: 16px;
-            margin-bottom: 10px;
-            img{
-                width:30px;
-                height: 30px;
-                margin-right: 10px;
-            }
-        }
-    }
+.dialog {
+	display: flex;
+	flex-direction: column;
+	font-size: 14px;
+	.item {
+		margin-bottom: 15px;
+		.con {
+			width: 100%;
+			padding: 15px;
+			box-sizing: border-box;
+			background-color: rgba(255, 165, 134, 0.2);
+			color: #751e00;
+			border-radius: 10px;
+			line-height: 24px;
+		}
+	}
+	.left {
+		display: flex;
+		flex-direction: column;
+		.head {
+			display: flex;
+			justify-content: flex-start;
+			align-items: center;
+			font-size: 16px;
+			margin-bottom: 10px;
+			img {
+				width: 30px;
+				height: 30px;
+				margin-right: 10px;
+			}
+		}
+	}
 
-    .right{
-        display: flex;
-        flex-direction: column;
-        .head{
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            font-size: 16px;
-            margin-bottom: 10px;
-            img{
-                width:30px;
-                height: 30px;
-                margin-left: 10px;
-            }
-        }
-    }
+	.right {
+		display: flex;
+		flex-direction: column;
+		.head {
+			display: flex;
+			justify-content: flex-end;
+			align-items: center;
+			font-size: 16px;
+			margin-bottom: 10px;
+			img {
+				width: 30px;
+				height: 30px;
+				margin-left: 10px;
+			}
+		}
+	}
 }
-
-
 </style>

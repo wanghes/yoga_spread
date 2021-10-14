@@ -17,6 +17,7 @@ export const constantRoutes = [
 ];
 
 const createRouter = () => new Router({
+    mode: "history",
     scrollBehavior: () => ({
         y: 0
     }),

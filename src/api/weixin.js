@@ -1,9 +1,16 @@
 import request from '@/utils/request'
 
+export function jssdk_config(data) {
+    return request({
+        url: '/venues/wx/jssdk_config',
+        method: 'post',
+        data
+    });
+}
 
 export function getUser(params) {
     return request({
-        url: '/index/weixin/userinfo',
+        url: '/venues/wx/userinfo',
         method: 'get',
         params
     });
@@ -11,7 +18,7 @@ export function getUser(params) {
 
 export function getCode(params) {
     return request({
-        url: '/index/weixin/code',
+        url: '/venues/wx/code',
         method: 'get',
         params
     });
@@ -19,7 +26,7 @@ export function getCode(params) {
 
 export function getAuth(params) {
     return request({
-        url: '/index/weixin/auth',
+        url: '/venues/wx/auth',
         method: 'get',
         params
     });
@@ -27,7 +34,7 @@ export function getAuth(params) {
 
 export function pay(data) {
     return request({
-        url: '/index/weixin/pay',
+        url: '/venues/wx/pay',
         method: 'post',
         data
     });
@@ -36,33 +43,11 @@ export function pay(data) {
 
 export function payOk(data) {
     return request({
-        url: '/index/weixin/pay_ok',
+        url: '/venues/wx/buy_venues_ok',
         method: 'post',
         data
     });
 }
 
-export function pay_online_Ok(data) {
-    return request({
-        url: '/index/weixin/pay_online_Ok',
-        method: 'post',
-        data
-    });
-}
 
-export function pay_free_online_Ok(data) {
-    return request({
-        url: '/index/weixin/pay_free_online_Ok',
-        method: 'post',
-        data
-    });
-}
-
-export function jssdk_config(data) {
-    return request({
-        url: '/index/weixin/jssdk_config',
-        method: 'post',
-        data
-    });
-}
 
