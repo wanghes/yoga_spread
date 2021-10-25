@@ -387,7 +387,7 @@
                         </van-swipe-item>
                     </van-swipe>
 
-                    <div class="btn_k" @click="submit">立即开通</div>
+                    <div class="btn_k" v-show="showBtn" @click="submit">立即开通</div>
                 </div>
             </div>
         </van-dialog>
@@ -493,7 +493,14 @@
         </van-dialog>
 
         <van-dialog v-model="showPhone" :before-close="onBeforeClose" :close-on-click-overlay="false" :overlay="true" title="填写您的购买手机号" show-cancel-button>
+			<div class="mes" v-show="msgShow">{{phoneMsg}}</div>
             <van-field v-model="phone" name="手机号" label="手机号" placeholder="手机号" />
+            <van-field v-model="vcode" center clearable label="短信验证码" placeholder="请输入短信验证码">
+                <template #button>
+                    <van-button :disabled="false" v-if="!sending" @click="fetchVcode" size="small" type="info">发送验证码</van-button>
+                    <van-button :disabled="true" v-else size="small" type="info">还剩 {{seconds}} 秒</van-button>
+                </template>
+            </van-field>
         </van-dialog>
     </div>
 </template>
@@ -592,17 +599,24 @@ export default {
 				},
 			],
 			activeIndex: 0,
+			showBtn: false,
+			verification_key:"",
+			vcode: "",
+			sending: false,
+			seconds: 60,
+			msgShow: false,
+			phoneMsg: ''
 		};
 	},
 	mounted() {
 		this.executeWeixin();
 		this.fetchUser();
+		this.verification_key = cookie.get("verification_key");
 	},
 	methods: {
 		async fetchUser() {
 			const QueryParams = getQueryParams(location.href);
 			const QueryCode = QueryParams.code;
-
 			const CookieOpenID = cookie.get("user_openid");
 			const phone = cookie.get("user_phone");
 			// 存在缓存的openid
@@ -629,10 +643,10 @@ export default {
 				let res = await weixinApi.getAuth({
 					code: QueryCode,
 				});
-                
+
 				if (res.code == 200 && !!res.data) {
 					const OPENID = res.data.openid;
-                    const ACCESS_TOKEN = res.data.access_token;
+					const ACCESS_TOKEN = res.data.access_token;
 					let resultData = await userApi.wxLogin({
 						openid: OPENID,
 					});
@@ -640,19 +654,20 @@ export default {
 					if (resultData.code == 200 && !!data) {
 						cookie.set("user_id", data.user_id);
 						cookie.set("user_phone", data.phone);
-						cookie.set("user_openid", data.openid)
-					} else {                        
-                        // 证明用户没有注册过呢，去注册场馆主
-                        let wxUser = await weixinApi.getUser({
-                            openid: OPENID,
-                            access_token: ACCESS_TOKEN
-                        });
+						cookie.set("user_openid", data.openid);
+					} else {
+						// 证明用户没有注册过呢，去注册场馆主
+						let wxUser = await weixinApi.getUser({
+							openid: OPENID,
+							access_token: ACCESS_TOKEN,
+						});
 
-                        if (wxUser.code == 200 && wxUser.data) {
-                            cookie.set("user_nickname",  wxUser.data.nickname);
-						    cookie.set("user_openid",  wxUser.data.openid);
-                            cookie.set("user_head",  wxUser.data.headimgurl);
-                        }
+						if (wxUser.code == 200 && wxUser.data) {
+							cookie.set("user_nickname", wxUser.data.nickname);
+							cookie.set("user_openid", wxUser.data.openid);
+							cookie.set("user_head", wxUser.data.headimgurl);
+							this.showBtn = true;
+						}
 					}
 				} else {
 					// http://localhost:8080/?code=1&type=app#/
@@ -668,10 +683,12 @@ export default {
 							cookie.set("user_phone", data.phone);
 							cookie.set("user_openid", data.openid);
 						} else {
+							this.showBtn = true;
 							// this.showPhone = true;
 							// 证明用户没有注册过呢，去注册场馆主
 						}
 					} else {
+						this.showBtn = false;
 						console.log("未知错误");
 					}
 				}
@@ -703,6 +720,7 @@ export default {
 				});
 
 				wx.ready(function () {
+					/*
 					wx.updateAppMessageShareData({
 						title: "带您赚钱的约课系统", // 分享标题
 						desc: "运行稳定不卡顿，设计简洁上手快，统计精准不出错，功能全面效率高", // 分享描述
@@ -710,7 +728,6 @@ export default {
                         imgurl: "http://assets.yoga.com/storage/venues/93/2a1a4cc02e0c0d6c57175be57b93c4.jpg",
 						success: function (res) {
 							console.log(res);
-							// 设置成功
 						},
 						fail(error) {
 							console.log(error);
@@ -723,42 +740,24 @@ export default {
 							console.log(res);
 						},
 					});
+					*/
 				});
 			}
 		},
 		changeItem(index) {
 			this.activeIndex = index;
 		},
-		onBeforeClose(action, done) {
-			if (action === "confirm") {
-				let phone = this.phone;
-                let reg_tel = /^(13[0-9]|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18[0-9]|19[0-35-9])\d{8}$/;
-				if (!phone) {
-					this.$toast("请填写您的手机号");
-					return done(false);
-				}
-
-				if (!reg_tel.test(phone)) {
-					this.$toast("请填写正确的手机号");
-					return done(false);
-				}
-                return done();
-
-			} else {
-				return done();
-			}
-		},
-	
+		
 		submit() {
-            let admin_user_id = cookie.get("user_id");
-            let admin_phone = cookie.get("user_phone");
-            if (admin_user_id && admin_phone) {
-                this.$toast("已经购买过了");
-                return;
-            }
+			let admin_user_id = cookie.get("user_id");
+			let admin_phone = cookie.get("user_phone");
+			if (admin_user_id && admin_phone) {
+				this.$toast("已经购买过了");
+				return;
+			}
 
-            let phone = this.phone;
-            if (!phone) {
+			let phone = this.phone;
+			if (!phone) {
 				// this.$toast("需要填写手机号");
 				this.showPhone = true;
 				return;
@@ -773,7 +772,7 @@ export default {
 				type = 2;
 				money = this.moneys[1].price;
 			}
-        
+
 			var ua = window.navigator.userAgent.toLowerCase();
 			if (ua.match(/MicroMessenger/i) == "micromessenger") {
 				//再判断一下是否在小程序里
@@ -792,10 +791,11 @@ export default {
 			}
 		},
 		async payFunc(money, type, phone) {
+			let that = this;
 			let openId = cookie.get("user_openid");
-            let nickname = cookie.get("user_nickname");
-            let avatar = cookie.get("user_head");
-            money = 0.01;
+			let nickname = cookie.get("user_nickname");
+			let avatar = cookie.get("user_head");
+			money = 0.01;
 			if (!openId) {
 				this.$toast("获取用户信息失败");
 				return;
@@ -804,8 +804,8 @@ export default {
 				openid: openId,
 				total_fee: Math.ceil(money * 100),
 			});
-		
-            money = 365
+
+			money = 365;
 			if (res.code == 200) {
 				wx.ready(async () => {
 					let data = res.data;
@@ -820,48 +820,145 @@ export default {
 					let extra = data.extra;
 					let sell_type_name =
 						type == 1 ? "购买场馆主-365元" : "购买场馆主-1888元";
-					
-					options.success = async () => {
-						// 支付成功后将数据插入到表中
-						let result = await weixinApi.payOk({
-							...extra,
-							name: "场馆主购买",
-							sell_type_name: sell_type_name,
-							sell_type: 5,
-							openid: openId,
-							pay_type: 2, // 支付的方式 1：现金 2：微信 3：支付宝 4：刷卡
-							amount: money,
-                            phone,
-                            nickname,
-                            avatar
-						});
 
-						if (result.code == 200) {
+					options.success = async res => {
+						if (res.errMsg == "chooseWXPay:ok") {
 							that.$notify({
-								message: result.msg,
+								message: "支付成功",
 								color: "#ffffff",
 								background: "#00B76F",
 							});
-							setTimeout(() => {
-								// that.$router.push({
-								// 	path: "/pay/success",
-								// });
-							}, 500);
+
+							// 支付成功后将数据插入到表中
+							let result = await weixinApi.payOk({
+								...extra,
+								name: "场馆主购买",
+								sell_type_name: sell_type_name,
+								sell_type: 5,
+								openid: openId,
+								pay_type: 2, // 支付的方式 1：现金 2：微信 3：支付宝 4：刷卡
+								amount: money,
+								phone,
+								nickname,
+								avatar,
+							});
+
+							if (result.code == 200) {
+								this.showBtn = false;
+								that.$notify({
+									message: "正在跳转管理中心页面...",
+									color: "#ffffff",
+									background: "#00B76F",
+								});
+								setTimeout(() => {
+									window.location.href =
+										"http://h5.yogaguanjia.com";
+								}, 2000);
+							}
 						}
 					};
 
-					//  取消支付的操作
+					// 取消支付的操作
 					options.cancel = function () {
-						console.log("已经取消");
+						that.$notify({
+							message: "已经取消",
+							type: "danger",
+						});
 					};
 					// 支付失败的处理
 					options.fail = function () {
-						console.log("支付失败");
+						that.$notify({
+							message: "支付失败",
+							type: "danger",
+						});
 					};
 					// 传入参数，发起JSAPI支付
 					wx.chooseWXPay(options);
 				});
 			}
+		},
+		async fetchVcode() {
+			const phone = this.phone;
+			if (!phone) {
+				this.msgShow = true;
+				this.phoneMsg = "请填写手机号";
+				return;
+			}
+			let reg_tel = /^(13[0-9]|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18[0-9]|19[0-35-9])\d{8}$/;
+			
+			if (!reg_tel.test(phone)) {
+				this.msgShow = true;
+				this.phone = "";
+				this.phoneMsg = "请填写正确的手机号";
+				return;
+			}
+
+			this.startReadSeconds();
+			let res = await weixinApi.getVcode({
+				phone: phone,
+			});
+
+			if (res.code == 200) {
+				this.msgShow = false;
+				this.phoneMsg = false;
+				cookie.set("verification_key", res.data.verification_key);
+				this.verification_key = res.data.verification_key;
+			}
+		},
+		async onBeforeClose(action, done) {
+			if (action === "confirm") {
+				let phone = this.phone;
+				let reg_tel =/^(13[0-9]|14[01456879]|15[0-35-9]|16[2567]|17[0-8]|18[0-9]|19[0-35-9])\d{8}$/;
+				if (!phone) {
+					this.msgShow = true;
+					this.phoneMsg = "请填写您的手机号";
+					return done(false);
+				}
+
+				if (!reg_tel.test(phone)) {
+					this.msgShow = true;
+					this.phone = "";
+					this.phoneMsg = "请填写正确的手机号";
+					return done(false);
+				}
+
+				const vcode = this.vcode;
+				const verification_key = this.verification_key;
+
+				let res = await weixinApi.testPhone({
+					phone,
+					vcode,
+					verification_key,
+				});
+
+				if (res.code == 200) {
+					this.msgShow = false;
+					this.phoneMsg = false;
+					return done();
+				} else {
+					this.msgShow = true;
+					this.phoneMsg = res.msg;
+					this.phone = "";
+					this.$toast(res.msg);
+				}
+				
+			} else {
+				return done();
+			}
+		},
+
+		startReadSeconds() {
+			this.sending = true;
+			var timer = setInterval(() => {
+				if (this.seconds == 0) {
+					clearInterval(timer);
+					timer = null;
+					this.sending = false;
+					this.seconds = 60;
+					return;
+				}
+				this.seconds = this.seconds - 1;
+			}, 1000);
 		},
 	},
 };
@@ -891,6 +988,14 @@ export default {
 .fenxiao .block .van-swipe__indicator.van-swipe__indicator--active {
 	background-color: #ff7e00 !important;
 	width: 10px;
+}
+.mes{
+	background-color: #ff7e00;
+	font-size: 12px;
+	color:#fff;
+	width:100%;
+	padding: 5px 0;
+	text-align: center;
 }
 </style>
 <style lang="less" scoped>

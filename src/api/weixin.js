@@ -40,6 +40,24 @@ export function pay(data) {
     });
 }
 
+export function getVcode(data) {
+    return request({
+        url: '/venues/get/vcode',
+        method: 'post',
+        data
+    });
+}
+
+export function testPhone(data) {
+    return request({
+        url: '/venues/sms/test_phone',
+        method: 'post',
+        data
+    });
+}
+
+
+
 
 export function payOk(data) {
     return request({
