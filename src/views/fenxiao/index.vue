@@ -688,7 +688,7 @@ export default {
 							// 证明用户没有注册过呢，去注册场馆主
 						}
 					} else {
-						this.showBtn = false;
+						// this.showBtn = false;
 						console.log("未知错误");
 					}
 				}
